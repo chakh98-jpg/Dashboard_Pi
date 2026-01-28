@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring - Raspberry Pi</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🍓 Raspberry Pi Dashboard</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connexion...</span>
+                </div>
+            </div>
+            <div class="system-info" id="systemInfo">
+                <span id="hostname">-</span>
+                <span class="separator">|</span>
+                <span id="uptime">-</span>
+            </div>
+        </header>
+
+        <!-- Alerts Banner -->
+        <div class="alerts-banner" id="alertsBanner" style="display: none;">
+            <div class="alerts-content" id="alertsContent"></div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <main class="metrics-grid">
+            <!-- CPU Card -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon">⚡</span>
+                    <h2>CPU</h2>
+                </div>
+                <div class="metric-value">
+                    <span class="value" id="cpuValue">0</span>
+                    <span class="unit">%</span>
+                </div>
+                <div class="metric-gauge">
+                    <div class="gauge-fill" id="cpuGauge"></div>
+                </div>
+                <div class="metric-chart">
+                    <canvas id="cpuChart"></canvas>
+                </div>
+            </div>
+
+            <!-- RAM Card -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon">🧠</span>
+                    <h2>RAM</h2>
+                </div>
+                <div class="metric-value">
+                    <span class="value" id="ramValue">0</span>
+                    <span class="unit">%</span>
+                </div>
+                <div class="metric-details">
+                    <span id="ramUsed">0</span> / <span id="ramTotal">0</span> GB
+                </div>
+                <div class="metric-gauge">
+                    <div class="gauge-fill" id="ramGauge"></div>
+                </div>
+                <div class="metric-chart">
+                    <canvas id="ramChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Disk Card -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon">💾</span>
+                    <h2>Disque</h2>
+                </div>
+                <div class="metric-value">
+                    <span class="value" id="diskValue">0</span>
+                    <span class="unit">%</span>
+                </div>
+                <div class="metric-details">
+                    <span id="diskUsed">0</span> / <span id="diskTotal">0</span> GB
+                </div>
+                <div class="metric-gauge">
+                    <div class="gauge-fill" id="diskGauge"></div>
+                </div>
+            </div>
+
+            <!-- Temperature Card -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <span class="metric-icon">🌡️</span>
+                    <h2>Température</h2>
+                </div>
+                <div class="metric-value">
+                    <span class="value" id="tempValue">-</span>
+                    <span class="unit">°C</span>
+                </div>
+                <div class="temp-indicator" id="tempIndicator">
+                    <div class="temp-bar" id="tempBar"></div>
+                </div>
+                <div class="metric-chart">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+        </main>
+
+        <!-- Statistics Section -->
+        <section class="stats-section">
+            <h2>📊 Statistiques (1h)</h2>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-item">
+                    <span class="stat-label">CPU Moyen</span>
+                    <span class="stat-value" id="statCpuAvg">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">CPU Max</span>
+                    <span class="stat-value" id="statCpuMax">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">RAM Moyenne</span>
+                    <span class="stat-value" id="statRamAvg">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Temp Max</span>
+                    <span class="stat-value" id="statTempMax">-</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Dashboard Monitoring v1.0 | Dernière mise à jour: <span id="lastUpdate">-</span></p>
+        </footer>
+    </div>
+
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

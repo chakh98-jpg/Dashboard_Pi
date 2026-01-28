@@ -1,0 +1,25 @@
+# Dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+.venv/
+
+# Database
+*.db
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+.docker/
