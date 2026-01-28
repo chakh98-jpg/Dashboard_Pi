@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,136 +8,298 @@
     <link rel="stylesheet" href="/css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="dashboard">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1>🍓 Raspberry Pi Dashboard</h1>
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <span class="logo">🍓</span>
+                <h1>Pi Dashboard</h1>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-section="monitoring">
+                    <span class="nav-icon">📊</span>
+                    <span>Monitoring</span>
+                </li>
+                <li class="nav-item" data-section="processes">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Processus</span>
+                </li>
+                <li class="nav-item" data-section="docker">
+                    <span class="nav-icon">🐳</span>
+                    <span>Docker</span>
+                </li>
+                <li class="nav-item" data-section="files">
+                    <span class="nav-icon">📁</span>
+                    <span>Fichiers</span>
+                </li>
+                <li class="nav-item" data-section="system">
+                    <span class="nav-icon">🔧</span>
+                    <span>Système</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
                 <div class="connection-status" id="connectionStatus">
                     <span class="status-dot"></span>
                     <span class="status-text">Connexion...</span>
                 </div>
             </div>
-            <div class="system-info" id="systemInfo">
-                <span id="hostname">-</span>
-                <span class="separator">|</span>
-                <span id="uptime">-</span>
-            </div>
-        </header>
+        </nav>
 
-        <!-- Alerts Banner -->
-        <div class="alerts-banner" id="alertsBanner" style="display: none;">
-            <div class="alerts-content" id="alertsContent"></div>
-        </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h2 id="sectionTitle">Monitoring</h2>
+                </div>
+                <div class="header-right">
+                    <div class="system-info">
+                        <span class="hostname" id="hostname">🖥️ chakh98</span>
+                        <span class="uptime" id="uptime">⏱️ -</span>
+                    </div>
+                </div>
+            </header>
 
-        <!-- Metrics Grid -->
-        <main class="metrics-grid">
-            <!-- CPU Card -->
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-icon">⚡</span>
-                    <h2>CPU</h2>
-                </div>
-                <div class="metric-value">
-                    <span class="value" id="cpuValue">0</span>
-                    <span class="unit">%</span>
-                </div>
-                <div class="metric-gauge">
-                    <div class="gauge-fill" id="cpuGauge"></div>
-                </div>
-                <div class="metric-chart">
-                    <canvas id="cpuChart"></canvas>
-                </div>
+            <!-- Alerts Banner -->
+            <div class="alerts-banner" id="alertsBanner" style="display: none;">
+                <div class="alerts-content" id="alertsContent"></div>
             </div>
 
-            <!-- RAM Card -->
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-icon">🧠</span>
-                    <h2>RAM</h2>
-                </div>
-                <div class="metric-value">
-                    <span class="value" id="ramValue">0</span>
-                    <span class="unit">%</span>
-                </div>
-                <div class="metric-details">
-                    <span id="ramUsed">0</span> / <span id="ramTotal">0</span> GB
-                </div>
-                <div class="metric-gauge">
-                    <div class="gauge-fill" id="ramGauge"></div>
-                </div>
-                <div class="metric-chart">
-                    <canvas id="ramChart"></canvas>
-                </div>
-            </div>
+            <!-- Section: Monitoring -->
+            <section id="section-monitoring" class="section active">
+                <div class="metrics-grid">
+                    <!-- CPU Card -->
+                    <div class="metric-card">
+                        <div class="card-header">
+                            <span class="card-icon">⚡</span>
+                            <h3>CPU</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-display">
+                                <span class="metric-value" id="cpuValue">0</span>
+                                <span class="metric-unit">%</span>
+                            </div>
+                            <div class="metric-gauge">
+                                <div class="gauge-track">
+                                    <div class="gauge-fill" id="cpuGauge"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-chart">
+                            <canvas id="cpuChart"></canvas>
+                        </div>
+                    </div>
 
-            <!-- Disk Card -->
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-icon">💾</span>
-                    <h2>Disque</h2>
-                </div>
-                <div class="metric-value">
-                    <span class="value" id="diskValue">0</span>
-                    <span class="unit">%</span>
-                </div>
-                <div class="metric-details">
-                    <span id="diskUsed">0</span> / <span id="diskTotal">0</span> GB
-                </div>
-                <div class="metric-gauge">
-                    <div class="gauge-fill" id="diskGauge"></div>
-                </div>
-            </div>
+                    <!-- RAM Card -->
+                    <div class="metric-card">
+                        <div class="card-header">
+                            <span class="card-icon">🧠</span>
+                            <h3>RAM</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-display">
+                                <span class="metric-value" id="ramValue">0</span>
+                                <span class="metric-unit">%</span>
+                            </div>
+                            <div class="metric-details">
+                                <span id="ramUsed">0</span> / <span id="ramTotal">0</span> GB
+                            </div>
+                            <div class="metric-gauge">
+                                <div class="gauge-track">
+                                    <div class="gauge-fill" id="ramGauge"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-chart">
+                            <canvas id="ramChart"></canvas>
+                        </div>
+                    </div>
 
-            <!-- Temperature Card -->
-            <div class="metric-card">
-                <div class="metric-header">
-                    <span class="metric-icon">🌡️</span>
-                    <h2>Température</h2>
+                    <!-- Disk Card -->
+                    <div class="metric-card">
+                        <div class="card-header">
+                            <span class="card-icon">💾</span>
+                            <h3>Disque</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-display">
+                                <span class="metric-value" id="diskValue">0</span>
+                                <span class="metric-unit">%</span>
+                            </div>
+                            <div class="metric-details">
+                                <span id="diskUsed">0</span> / <span id="diskTotal">0</span> GB
+                            </div>
+                            <div class="metric-gauge">
+                                <div class="gauge-track">
+                                    <div class="gauge-fill" id="diskGauge"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temperature Card -->
+                    <div class="metric-card">
+                        <div class="card-header">
+                            <span class="card-icon">🌡️</span>
+                            <h3>Température</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-display">
+                                <span class="metric-value" id="tempValue">-</span>
+                                <span class="metric-unit">°C</span>
+                            </div>
+                            <div class="temp-scale">
+                                <div class="temp-gradient"></div>
+                                <div class="temp-marker" id="tempMarker"></div>
+                            </div>
+                        </div>
+                        <div class="card-chart">
+                            <canvas id="tempChart"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="metric-value">
-                    <span class="value" id="tempValue">-</span>
-                    <span class="unit">°C</span>
+
+                <!-- Stats -->
+                <div class="stats-panel">
+                    <h3>📈 Statistiques (1h)</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">CPU Moyen</span>
+                            <span class="stat-value" id="statCpuAvg">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">CPU Max</span>
+                            <span class="stat-value" id="statCpuMax">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">RAM Moyenne</span>
+                            <span class="stat-value" id="statRamAvg">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Temp Max</span>
+                            <span class="stat-value" id="statTempMax">-</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="temp-indicator" id="tempIndicator">
-                    <div class="temp-bar" id="tempBar"></div>
+            </section>
+
+            <!-- Section: Processes -->
+            <section id="section-processes" class="section">
+                <div class="section-header">
+                    <h3>Processus en cours</h3>
+                    <button class="btn btn-secondary" onclick="loadProcesses()">🔄 Rafraîchir</button>
                 </div>
-                <div class="metric-chart">
-                    <canvas id="tempChart"></canvas>
+                <div class="table-container">
+                    <table class="data-table" id="processesTable">
+                        <thead>
+                            <tr>
+                                <th>PID</th>
+                                <th>Nom</th>
+                                <th>Utilisateur</th>
+                                <th>CPU %</th>
+                                <th>RAM %</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processesBody"></tbody>
+                    </table>
                 </div>
-            </div>
+            </section>
+
+            <!-- Section: Docker -->
+            <section id="section-docker" class="section">
+                <div class="section-header">
+                    <h3>🐳 Conteneurs Docker</h3>
+                    <button class="btn btn-secondary" onclick="loadDockerContainers()">🔄 Rafraîchir</button>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="dockerTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Image</th>
+                                <th>État</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dockerBody"></tbody>
+                    </table>
+                </div>
+                <div class="docker-images">
+                    <h3>📦 Images Docker</h3>
+                    <div id="dockerImages"></div>
+                </div>
+            </section>
+
+            <!-- Section: Files -->
+            <section id="section-files" class="section">
+                <div class="file-manager">
+                    <div class="file-header">
+                        <div class="file-path">
+                            <span class="path-label">📂</span>
+                            <input type="text" id="currentPath" value="/" readonly>
+                            <button class="btn btn-icon" onclick="navigateUp()">⬆️</button>
+                            <button class="btn btn-icon" onclick="loadFiles()">🔄</button>
+                        </div>
+                    </div>
+                    <div class="file-content">
+                        <div class="file-list" id="fileList"></div>
+                        <div class="file-editor" id="fileEditor" style="display: none;">
+                            <div class="editor-header">
+                                <span id="editorFileName"></span>
+                                <div class="editor-actions">
+                                    <button class="btn btn-primary" onclick="saveFile()">💾 Sauvegarder</button>
+                                    <button class="btn btn-secondary" onclick="closeEditor()">✖️ Fermer</button>
+                                </div>
+                            </div>
+                            <textarea id="editorContent"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: System -->
+            <section id="section-system" class="section">
+                <div class="system-controls">
+                    <h3>⚠️ Contrôles Système</h3>
+                    <div class="control-buttons">
+                        <button class="btn btn-warning" onclick="confirmAction('reboot')">
+                            🔄 Redémarrer le Pi
+                        </button>
+                        <button class="btn btn-danger" onclick="confirmAction('shutdown')">
+                            ⏹️ Arrêter le Pi
+                        </button>
+                    </div>
+                </div>
+                <div class="system-services">
+                    <h3>🔧 Services Système</h3>
+                    <div id="servicesList"></div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <p>Dashboard v2.0 | Dernière mise à jour: <span id="lastUpdate">-</span></p>
+            </footer>
         </main>
+    </div>
 
-        <!-- Statistics Section -->
-        <section class="stats-section">
-            <h2>📊 Statistiques (1h)</h2>
-            <div class="stats-grid" id="statsGrid">
-                <div class="stat-item">
-                    <span class="stat-label">CPU Moyen</span>
-                    <span class="stat-value" id="statCpuAvg">-</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">CPU Max</span>
-                    <span class="stat-value" id="statCpuMax">-</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">RAM Moyenne</span>
-                    <span class="stat-value" id="statRamAvg">-</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Temp Max</span>
-                    <span class="stat-value" id="statTempMax">-</span>
-                </div>
+    <!-- Confirm Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Confirmation</h3>
+            <p id="modalMessage">Êtes-vous sûr ?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+                <button class="btn btn-danger" id="modalConfirm">Confirmer</button>
             </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="footer">
-            <p>Dashboard Monitoring v1.0 | Dernière mise à jour: <span id="lastUpdate">-</span></p>
-        </footer>
+        </div>
     </div>
 
     <script src="/js/dashboard.js"></script>
 </body>
+
 </html>

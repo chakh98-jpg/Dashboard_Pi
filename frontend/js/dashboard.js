@@ -1,6 +1,6 @@
 /**
- * Dashboard Monitoring - JavaScript
- * Real-time metrics display with WebSocket
+ * Dashboard Pi - Enhanced JavaScript v2.0
+ * Full system control with WebSocket real-time updates
  */
 
 // Configuration
@@ -16,6 +16,10 @@ const CONFIG = {
 let ws = null;
 let reconnectAttempts = 0;
 let charts = {};
+let currentPath = '/';
+let editingFile = null;
+let pendingAction = null;
+
 let chartData = {
     cpu: [],
     ram: [],
@@ -23,220 +27,73 @@ let chartData = {
     labels: []
 };
 
-// DOM Elements
-const elements = {
-    connectionStatus: document.getElementById('connectionStatus'),
-    statusDot: document.querySelector('.status-dot'),
-    statusText: document.querySelector('.status-text'),
-    hostname: document.getElementById('hostname'),
-    uptime: document.getElementById('uptime'),
-    alertsBanner: document.getElementById('alertsBanner'),
-    alertsContent: document.getElementById('alertsContent'),
-    cpuValue: document.getElementById('cpuValue'),
-    cpuGauge: document.getElementById('cpuGauge'),
-    ramValue: document.getElementById('ramValue'),
-    ramGauge: document.getElementById('ramGauge'),
-    ramUsed: document.getElementById('ramUsed'),
-    ramTotal: document.getElementById('ramTotal'),
-    diskValue: document.getElementById('diskValue'),
-    diskGauge: document.getElementById('diskGauge'),
-    diskUsed: document.getElementById('diskUsed'),
-    diskTotal: document.getElementById('diskTotal'),
-    tempValue: document.getElementById('tempValue'),
-    tempBar: document.getElementById('tempBar'),
-    lastUpdate: document.getElementById('lastUpdate'),
-    statCpuAvg: document.getElementById('statCpuAvg'),
-    statCpuMax: document.getElementById('statCpuMax'),
-    statRamAvg: document.getElementById('statRamAvg'),
-    statTempMax: document.getElementById('statTempMax'),
-};
+// ========================================
+// DOM Ready
+// ========================================
+document.addEventListener('DOMContentLoaded', () => {
+    initNavigation();
+    initCharts();
+    fetchSystemInfo();
+    fetchStats();
+    connectWebSocket();
 
-// Initialize Charts
-function initCharts() {
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            x: { display: false },
-            y: {
-                display: false,
-                min: 0,
-                max: 100
-            }
-        },
-        elements: {
-            point: { radius: 0 },
-            line: { tension: 0.4, borderWidth: 2 }
-        },
-        animation: { duration: 300 }
+    setInterval(fetchStats, CONFIG.statsRefreshInterval);
+});
+
+// ========================================
+// Navigation
+// ========================================
+function initNavigation() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const section = item.dataset.section;
+            switchSection(section);
+        });
+    });
+}
+
+function switchSection(sectionName) {
+    // Update nav
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.section === sectionName);
+    });
+
+    // Update sections
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.toggle('active', section.id === `section-${sectionName}`);
+    });
+
+    // Update title
+    const titles = {
+        monitoring: 'Monitoring',
+        processes: 'Processus',
+        docker: 'Docker',
+        files: 'Gestionnaire de fichiers',
+        system: 'Contrôles Système'
     };
+    document.getElementById('sectionTitle').textContent = titles[sectionName] || sectionName;
 
-    // CPU Chart
-    charts.cpu = new Chart(document.getElementById('cpuChart'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#00d4ff',
-                backgroundColor: 'rgba(0, 212, 255, 0.1)',
-                fill: true
-            }]
-        },
-        options: chartOptions
-    });
-
-    // RAM Chart
-    charts.ram = new Chart(document.getElementById('ramChart'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#7b68ee',
-                backgroundColor: 'rgba(123, 104, 238, 0.1)',
-                fill: true
-            }]
-        },
-        options: chartOptions
-    });
-
-    // Temperature Chart
-    charts.temp = new Chart(document.getElementById('tempChart'), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                data: [],
-                borderColor: '#ff6b81',
-                backgroundColor: 'rgba(255, 107, 129, 0.1)',
-                fill: true
-            }]
-        },
-        options: {
-            ...chartOptions,
-            scales: {
-                ...chartOptions.scales,
-                y: { display: false, min: 30, max: 85 }
-            }
-        }
-    });
-}
-
-// Update chart data
-function updateCharts(metrics) {
-    const now = new Date().toLocaleTimeString();
-
-    // Add new data
-    chartData.labels.push(now);
-    chartData.cpu.push(metrics.cpu_percent);
-    chartData.ram.push(metrics.ram_percent);
-    chartData.temp.push(metrics.cpu_temp || 0);
-
-    // Limit data points
-    if (chartData.labels.length > CONFIG.chartDataPoints) {
-        chartData.labels.shift();
-        chartData.cpu.shift();
-        chartData.ram.shift();
-        chartData.temp.shift();
-    }
-
-    // Update charts
-    charts.cpu.data.labels = chartData.labels;
-    charts.cpu.data.datasets[0].data = chartData.cpu;
-    charts.cpu.update('none');
-
-    charts.ram.data.labels = chartData.labels;
-    charts.ram.data.datasets[0].data = chartData.ram;
-    charts.ram.update('none');
-
-    if (metrics.cpu_temp) {
-        charts.temp.data.labels = chartData.labels;
-        charts.temp.data.datasets[0].data = chartData.temp;
-        charts.temp.update('none');
-    }
-}
-
-// Update gauge classes based on value
-function getGaugeClass(value) {
-    if (value >= 90) return 'danger';
-    if (value >= 70) return 'warning';
-    return '';
-}
-
-// Update metrics display
-function updateMetrics(metrics) {
-    // CPU
-    elements.cpuValue.textContent = metrics.cpu_percent.toFixed(1);
-    elements.cpuGauge.style.width = `${metrics.cpu_percent}%`;
-    elements.cpuGauge.className = `gauge-fill ${getGaugeClass(metrics.cpu_percent)}`;
-
-    // RAM
-    elements.ramValue.textContent = metrics.ram_percent.toFixed(1);
-    elements.ramGauge.style.width = `${metrics.ram_percent}%`;
-    elements.ramGauge.className = `gauge-fill ${getGaugeClass(metrics.ram_percent)}`;
-    elements.ramUsed.textContent = metrics.ram_used_gb.toFixed(1);
-    elements.ramTotal.textContent = metrics.ram_total_gb.toFixed(1);
-
-    // Disk
-    elements.diskValue.textContent = metrics.disk_percent.toFixed(1);
-    elements.diskGauge.style.width = `${metrics.disk_percent}%`;
-    elements.diskGauge.className = `gauge-fill ${getGaugeClass(metrics.disk_percent)}`;
-    elements.diskUsed.textContent = metrics.disk_used_gb.toFixed(1);
-    elements.diskTotal.textContent = metrics.disk_total_gb.toFixed(1);
-
-    // Temperature
-    if (metrics.cpu_temp !== null) {
-        elements.tempValue.textContent = metrics.cpu_temp.toFixed(1);
-        // Map temperature (30-85°C) to percentage (0-100%)
-        const tempPercent = Math.min(100, Math.max(0, ((metrics.cpu_temp - 30) / 55) * 100));
-        elements.tempBar.style.left = `${tempPercent}%`;
-    } else {
-        elements.tempValue.textContent = '-';
-    }
-
-    // Uptime
-    elements.uptime.textContent = `Uptime: ${metrics.uptime_formatted}`;
-
-    // Alerts
-    if (metrics.alerts && metrics.alerts.length > 0) {
-        elements.alertsBanner.style.display = 'block';
-        elements.alertsContent.innerHTML = metrics.alerts
-            .map(alert => `<span class="alert-item">${alert}</span>`)
-            .join('');
-    } else {
-        elements.alertsBanner.style.display = 'none';
-    }
-
-    // Last update
-    elements.lastUpdate.textContent = new Date().toLocaleTimeString();
-
-    // Update charts
-    updateCharts(metrics);
-}
-
-// Set connection status
-function setConnectionStatus(status) {
-    elements.statusDot.classList.remove('connected', 'error');
-
-    switch (status) {
-        case 'connected':
-            elements.statusDot.classList.add('connected');
-            elements.statusText.textContent = 'Connecté';
+    // Load section data
+    switch (sectionName) {
+        case 'processes':
+            loadProcesses();
             break;
-        case 'error':
-            elements.statusDot.classList.add('error');
-            elements.statusText.textContent = 'Déconnecté';
+        case 'docker':
+            loadDockerContainers();
+            loadDockerImages();
             break;
-        default:
-            elements.statusText.textContent = 'Connexion...';
+        case 'files':
+            loadFiles();
+            break;
+        case 'system':
+            loadServices();
+            break;
     }
 }
 
-// WebSocket connection
+// ========================================
+// WebSocket & Metrics
+// ========================================
 function connectWebSocket() {
     setConnectionStatus('connecting');
 
@@ -251,7 +108,6 @@ function connectWebSocket() {
     ws.onmessage = (event) => {
         try {
             const message = JSON.parse(event.data);
-
             if (message.type === 'metrics') {
                 updateMetrics(message.data);
             }
@@ -264,11 +120,8 @@ function connectWebSocket() {
         console.log('WebSocket disconnected');
         setConnectionStatus('error');
 
-        // Reconnect with exponential backoff
         const delay = Math.min(30000, CONFIG.reconnectInterval * Math.pow(2, reconnectAttempts));
         reconnectAttempts++;
-
-        console.log(`Reconnecting in ${delay}ms...`);
         setTimeout(connectWebSocket, delay);
     };
 
@@ -278,39 +131,409 @@ function connectWebSocket() {
     };
 }
 
-// Fetch system info
+function setConnectionStatus(status) {
+    const dot = document.querySelector('.status-dot');
+    const text = document.querySelector('.status-text');
+
+    dot.classList.remove('connected');
+
+    switch (status) {
+        case 'connected':
+            dot.classList.add('connected');
+            text.textContent = 'Connecté';
+            break;
+        case 'error':
+            text.textContent = 'Déconnecté';
+            break;
+        default:
+            text.textContent = 'Connexion...';
+    }
+}
+
+function updateMetrics(metrics) {
+    // CPU
+    document.getElementById('cpuValue').textContent = metrics.cpu_percent.toFixed(1);
+    updateGauge('cpuGauge', metrics.cpu_percent);
+
+    // RAM
+    document.getElementById('ramValue').textContent = metrics.ram_percent.toFixed(1);
+    document.getElementById('ramUsed').textContent = metrics.ram_used_gb.toFixed(1);
+    document.getElementById('ramTotal').textContent = metrics.ram_total_gb.toFixed(1);
+    updateGauge('ramGauge', metrics.ram_percent);
+
+    // Disk
+    document.getElementById('diskValue').textContent = metrics.disk_percent.toFixed(1);
+    document.getElementById('diskUsed').textContent = metrics.disk_used_gb.toFixed(1);
+    document.getElementById('diskTotal').textContent = metrics.disk_total_gb.toFixed(1);
+    updateGauge('diskGauge', metrics.disk_percent);
+
+    // Temperature
+    if (metrics.cpu_temp !== null) {
+        document.getElementById('tempValue').textContent = metrics.cpu_temp.toFixed(1);
+        const tempPercent = Math.min(100, Math.max(0, ((metrics.cpu_temp - 30) / 55) * 100));
+        document.getElementById('tempMarker').style.left = `${tempPercent}%`;
+    }
+
+    // Uptime
+    document.getElementById('uptime').textContent = `⏱️ ${metrics.uptime_formatted}`;
+
+    // Alerts
+    const alertsBanner = document.getElementById('alertsBanner');
+    if (metrics.alerts && metrics.alerts.length > 0) {
+        alertsBanner.style.display = 'block';
+        document.getElementById('alertsContent').innerHTML =
+            metrics.alerts.map(a => `<span class="alert-item">${a}</span>`).join('');
+    } else {
+        alertsBanner.style.display = 'none';
+    }
+
+    // Last update
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+    // Charts
+    updateCharts(metrics);
+}
+
+function updateGauge(id, value) {
+    const gauge = document.getElementById(id);
+    gauge.style.width = `${value}%`;
+    gauge.className = 'gauge-fill';
+    if (value >= 90) gauge.classList.add('danger');
+    else if (value >= 70) gauge.classList.add('warning');
+}
+
+// ========================================
+// Charts
+// ========================================
+function initCharts() {
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { display: false },
+            y: { display: false, min: 0, max: 100 }
+        },
+        elements: {
+            point: { radius: 0 },
+            line: { tension: 0.4, borderWidth: 2 }
+        },
+        animation: { duration: 300 }
+    };
+
+    charts.cpu = new Chart(document.getElementById('cpuChart'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: '#00d4ff', backgroundColor: 'rgba(0, 212, 255, 0.1)', fill: true }] },
+        options: chartOptions
+    });
+
+    charts.ram = new Chart(document.getElementById('ramChart'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, 0.1)', fill: true }] },
+        options: chartOptions
+    });
+
+    charts.temp = new Chart(document.getElementById('tempChart'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true }] },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { display: false, min: 30, max: 85 } } }
+    });
+}
+
+function updateCharts(metrics) {
+    const now = new Date().toLocaleTimeString();
+
+    chartData.labels.push(now);
+    chartData.cpu.push(metrics.cpu_percent);
+    chartData.ram.push(metrics.ram_percent);
+    chartData.temp.push(metrics.cpu_temp || 0);
+
+    if (chartData.labels.length > CONFIG.chartDataPoints) {
+        chartData.labels.shift();
+        chartData.cpu.shift();
+        chartData.ram.shift();
+        chartData.temp.shift();
+    }
+
+    charts.cpu.data.labels = chartData.labels;
+    charts.cpu.data.datasets[0].data = chartData.cpu;
+    charts.cpu.update('none');
+
+    charts.ram.data.labels = chartData.labels;
+    charts.ram.data.datasets[0].data = chartData.ram;
+    charts.ram.update('none');
+
+    charts.temp.data.labels = chartData.labels;
+    charts.temp.data.datasets[0].data = chartData.temp;
+    charts.temp.update('none');
+}
+
+// ========================================
+// API Functions
+// ========================================
 async function fetchSystemInfo() {
     try {
-        const response = await fetch(`${CONFIG.apiUrl}/system`);
+        const response = await fetch(`${CONFIG.apiUrl}/system/hostname`);
         const data = await response.json();
-        elements.hostname.textContent = data.hostname;
+        document.getElementById('hostname').textContent = `🖥️ ${data.user}@${data.hostname}`;
     } catch (error) {
         console.error('Error fetching system info:', error);
     }
 }
 
-// Fetch statistics
 async function fetchStats() {
     try {
         const response = await fetch(`${CONFIG.apiUrl}/metrics/stats?hours=1`);
         const data = await response.json();
 
-        elements.statCpuAvg.textContent = `${data.cpu.avg}%`;
-        elements.statCpuMax.textContent = `${data.cpu.max}%`;
-        elements.statRamAvg.textContent = `${data.ram.avg}%`;
-        elements.statTempMax.textContent = data.temperature.max ? `${data.temperature.max}°C` : '-';
+        document.getElementById('statCpuAvg').textContent = `${data.cpu.avg}%`;
+        document.getElementById('statCpuMax').textContent = `${data.cpu.max}%`;
+        document.getElementById('statRamAvg').textContent = `${data.ram.avg}%`;
+        document.getElementById('statTempMax').textContent = data.temperature.max ? `${data.temperature.max}°C` : '-';
     } catch (error) {
         console.error('Error fetching stats:', error);
     }
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    initCharts();
-    fetchSystemInfo();
-    fetchStats();
-    connectWebSocket();
+// ========================================
+// Processes
+// ========================================
+async function loadProcesses() {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/processes/list?limit=30`);
+        const processes = await response.json();
 
-    // Refresh stats periodically
-    setInterval(fetchStats, CONFIG.statsRefreshInterval);
-});
+        const tbody = document.getElementById('processesBody');
+        tbody.innerHTML = processes.map(p => `
+            <tr>
+                <td>${p.pid}</td>
+                <td>${p.name}</td>
+                <td>${p.username}</td>
+                <td>${p.cpu_percent.toFixed(1)}%</td>
+                <td>${p.memory_percent.toFixed(1)}%</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="killProcess(${p.pid}, '${p.name}')">
+                        ⛔ Kill
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading processes:', error);
+    }
+}
+
+async function killProcess(pid, name) {
+    if (!confirm(`Tuer le processus "${name}" (PID: ${pid}) ?`)) return;
+
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/processes/kill/${pid}`, { method: 'POST' });
+        if (response.ok) {
+            alert('Processus terminé');
+            loadProcesses();
+        } else {
+            const error = await response.json();
+            alert(`Erreur: ${error.detail}`);
+        }
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+}
+
+// ========================================
+// Docker
+// ========================================
+async function loadDockerContainers() {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/docker/containers`);
+        const containers = await response.json();
+
+        const tbody = document.getElementById('dockerBody');
+        tbody.innerHTML = containers.map(c => `
+            <tr>
+                <td><code>${c.id}</code></td>
+                <td>${c.name}</td>
+                <td>${c.image}</td>
+                <td>
+                    <span class="status-badge ${c.state === 'running' ? 'status-running' : 'status-stopped'}">
+                        ${c.state}
+                    </span>
+                </td>
+                <td>
+                    ${c.state === 'running'
+                ? `<button class="btn btn-warning btn-sm" onclick="dockerAction('${c.id}', 'stop')">⏹️</button>
+                           <button class="btn btn-secondary btn-sm" onclick="dockerAction('${c.id}', 'restart')">🔄</button>`
+                : `<button class="btn btn-success btn-sm" onclick="dockerAction('${c.id}', 'start')">▶️</button>`
+            }
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading containers:', error);
+    }
+}
+
+async function loadDockerImages() {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/docker/images`);
+        const data = await response.json();
+
+        document.getElementById('dockerImages').innerHTML = data.images.map(i => `
+            <div class="stat-item">
+                <span class="stat-label">${i.repository}:${i.tag}</span>
+                <span class="stat-value">${i.size}</span>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading images:', error);
+    }
+}
+
+async function dockerAction(containerId, action) {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/docker/container/${containerId}/${action}`, { method: 'POST' });
+        if (response.ok) {
+            loadDockerContainers();
+        } else {
+            const error = await response.json();
+            alert(`Erreur: ${error.detail}`);
+        }
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+}
+
+// ========================================
+// File Manager
+// ========================================
+async function loadFiles(path = currentPath) {
+    currentPath = path;
+    document.getElementById('currentPath').value = path;
+
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/files/list?path=${encodeURIComponent(path)}`);
+        const files = await response.json();
+
+        const fileList = document.getElementById('fileList');
+        fileList.innerHTML = files.map(f => `
+            <div class="file-item ${f.is_dir ? 'directory' : ''}" 
+                 onclick="${f.is_dir ? `loadFiles('${f.path}')` : `openFile('${f.path}')`}">
+                <span class="file-icon">${f.is_dir ? '📁' : '📄'}</span>
+                <span class="file-name">${f.name}</span>
+                <span class="file-size">${f.is_dir ? '' : formatSize(f.size)}</span>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading files:', error);
+    }
+}
+
+function navigateUp() {
+    const parts = currentPath.split('/').filter(Boolean);
+    parts.pop();
+    loadFiles('/' + parts.join('/'));
+}
+
+async function openFile(path) {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/files/read?path=${encodeURIComponent(path)}`);
+        const data = await response.json();
+
+        editingFile = path;
+        document.getElementById('editorFileName').textContent = path;
+        document.getElementById('editorContent').value = data.content;
+        document.getElementById('fileEditor').style.display = 'flex';
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+}
+
+async function saveFile() {
+    if (!editingFile) return;
+
+    try {
+        const content = document.getElementById('editorContent').value;
+        const response = await fetch(`${CONFIG.apiUrl}/files/write?path=${encodeURIComponent(editingFile)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        });
+
+        if (response.ok) {
+            alert('Fichier sauvegardé !');
+        } else {
+            const error = await response.json();
+            alert(`Erreur: ${error.detail}`);
+        }
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+}
+
+function closeEditor() {
+    document.getElementById('fileEditor').style.display = 'none';
+    editingFile = null;
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+}
+
+// ========================================
+// System Controls
+// ========================================
+function confirmAction(action) {
+    pendingAction = action;
+
+    const modal = document.getElementById('confirmModal');
+    const messages = {
+        reboot: 'Voulez-vous vraiment REDÉMARRER le Raspberry Pi ?',
+        shutdown: 'Voulez-vous vraiment ARRÊTER le Raspberry Pi ?'
+    };
+
+    document.getElementById('modalMessage').textContent = messages[action];
+    document.getElementById('modalConfirm').onclick = executeAction;
+    modal.classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('confirmModal').classList.remove('active');
+    pendingAction = null;
+}
+
+async function executeAction() {
+    if (!pendingAction) return;
+
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/system/${pendingAction}`, { method: 'POST' });
+        if (response.ok) {
+            alert(`Action "${pendingAction}" exécutée !`);
+        } else {
+            const error = await response.json();
+            alert(`Erreur: ${error.detail}`);
+        }
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+
+    closeModal();
+}
+
+async function loadServices() {
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/system/services`);
+        const data = await response.json();
+
+        document.getElementById('servicesList').innerHTML = data.services.slice(0, 10).map(s => `
+            <div class="stat-item">
+                <span class="stat-label">${s.name}</span>
+                <span class="status-badge status-running">${s.active}</span>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading services:', error);
+    }
+}

@@ -16,7 +16,14 @@ from app.database import init_db, async_session
 from app.models import Metric
 from app.collector import collect_metrics
 from app.websocket import manager
-from app.routes import metrics_router, history_router
+from app.routes import (
+    metrics_router, 
+    history_router, 
+    files_router, 
+    system_router,
+    docker_router,
+    processes_router
+)
 
 # Configure logging
 logging.basicConfig(
@@ -150,6 +157,10 @@ app.add_middleware(
 # Include routers
 app.include_router(metrics_router)
 app.include_router(history_router)
+app.include_router(files_router)
+app.include_router(system_router)
+app.include_router(docker_router)
+app.include_router(processes_router)
 
 
 @app.websocket("/ws")
