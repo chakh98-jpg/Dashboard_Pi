@@ -804,8 +804,149 @@ body::before {
 /* ========================================
    Docker Section
    ======================================== */
+
+/* Subsection titles */
+.subsection-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Apps section */
+.docker-apps-section {
+    margin-bottom: 32px;
+}
+
+.docker-apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+/* App Card */
+.app-card {
+    background: var(--bg-glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: var(--radius-xl);
+    border: var(--glass-border);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-glow-purple);
+}
+
+.app-card.app-running {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.app-card.app-running:hover {
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+}
+
+.app-card.app-stopped {
+    opacity: 0.7;
+}
+
+.app-card.app-stopped:hover {
+    opacity: 1;
+}
+
+.app-card-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: var(--glass-border);
+}
+
+.app-icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3));
+}
+
+.app-info {
+    flex: 1;
+}
+
+.app-info h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.app-image {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.app-card-body {
+    padding: 16px 20px;
+}
+
+.app-ports {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.port-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: rgba(6, 182, 212, 0.15);
+    color: var(--accent-secondary);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.port-badge:hover {
+    background: rgba(6, 182, 212, 0.25);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.app-card-footer {
+    display: flex;
+    gap: 8px;
+    padding: 16px 20px;
+    border-top: var(--glass-border);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.app-card-footer .btn {
+    flex: 1;
+}
+
+.app-card-footer .btn-primary {
+    flex: 2;
+}
+
+.app-card-footer .btn-danger {
+    flex: 0;
+    min-width: 42px;
+}
+
+/* Services section */
+.docker-services-section {
+    margin-bottom: 32px;
+}
+
+/* Docker images */
 .docker-images {
-    margin-top: 24px;
     background: var(--bg-glass);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -814,22 +955,16 @@ body::before {
     padding: 24px;
 }
 
-.docker-images h3 {
+.docker-images .subsection-title {
     margin-bottom: 20px;
-    font-size: 1.1rem;
-    color: var(--text-primary);
 }
 
-.docker-images .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    text-align: left;
-    margin-bottom: 12px;
-}
-
-.docker-images .stat-item:last-child {
-    margin-bottom: 0;
+/* Empty message */
+.empty-message {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
 }
 
 /* Port links */

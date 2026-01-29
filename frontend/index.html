@@ -211,26 +211,40 @@
             <!-- Section: Docker -->
             <section id="section-docker" class="section">
                 <div class="section-header">
-                    <h3>🐳 Conteneurs Docker</h3>
-                    <button class="btn btn-secondary" onclick="loadDockerContainers()">🔄 Rafraîchir</button>
+                    <h3>🐳 Docker</h3>
+                    <button class="btn btn-secondary" onclick="loadDockerContainers(); loadDockerImages();">🔄
+                        Rafraîchir</button>
                 </div>
-                <div class="table-container">
-                    <table class="data-table" id="dockerTable">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nom</th>
-                                <th>Image</th>
-                                <th>État</th>
-                                <th>Accès</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dockerBody"></tbody>
-                    </table>
+
+                <!-- Applications with accessible ports -->
+                <div class="docker-apps-section">
+                    <h4 class="subsection-title">🌐 Applications</h4>
+                    <div class="docker-apps-grid" id="dockerApps">
+                        <!-- Apps will be rendered here -->
+                    </div>
                 </div>
+
+                <!-- Backend services -->
+                <div class="docker-services-section">
+                    <h4 class="subsection-title">⚙️ Services</h4>
+                    <div class="table-container">
+                        <table class="data-table" id="dockerTable">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Image</th>
+                                    <th>État</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dockerBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Docker Images -->
                 <div class="docker-images">
-                    <h3>📦 Images Docker</h3>
+                    <h4 class="subsection-title">📦 Images Docker</h4>
                     <div id="dockerImages"></div>
                 </div>
             </section>

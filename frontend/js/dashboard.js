@@ -362,42 +362,123 @@ function parsePortMappings(portsString) {
     return ports;
 }
 
+function getAppName(containerName) {
+    // Clean up container name for display
+    return containerName
+        .replace(/-1$/, '')
+        .replace(/_/g, ' ')
+        .replace(/-/g, ' ')
+        .split(' ')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+}
+
+function getAppIcon(containerName) {
+    const name = containerName.toLowerCase();
+    if (name.includes('portfolio')) return '💼';
+    if (name.includes('nginx')) return '🌐';
+    if (name.includes('dashboard')) return '📊';
+    if (name.includes('mysql') || name.includes('mariadb')) return '🗃️';
+    if (name.includes('postgres')) return '🐘';
+    if (name.includes('redis')) return '⚡';
+    if (name.includes('mongo')) return '🍃';
+    if (name.includes('node') || name.includes('next')) return '💚';
+    if (name.includes('python') || name.includes('flask') || name.includes('django')) return '🐍';
+    if (name.includes('php') || name.includes('laravel')) return '🐘';
+    return '📦';
+}
+
 async function loadDockerContainers() {
     try {
         const response = await fetch(`${CONFIG.apiUrl}/docker/containers`);
         const containers = await response.json();
         const hostIP = getHostIP();
 
-        const tbody = document.getElementById('dockerBody');
-        tbody.innerHTML = containers.map(c => {
-            const ports = parsePortMappings(c.ports);
-            const portLinks = ports.length > 0
-                ? ports.map(p => `<a href="http://${hostIP}:${p.hostPort}" target="_blank" class="port-link">:${p.hostPort} 🔗</a>`).join(' ')
-                : '<span style="color: var(--text-muted)">-</span>';
+        // Separate apps (with ports) and services (without ports)
+        const apps = [];
+        const services = [];
 
-            return `
-            <tr>
-                <td><code>${c.id}</code></td>
-                <td><strong>${c.name}</strong></td>
-                <td>${c.image}</td>
-                <td>
-                    <span class="status-badge ${c.state === 'running' ? 'status-running' : 'status-stopped'}">
-                        ${c.state}
-                    </span>
-                </td>
-                <td>${portLinks}</td>
-                <td>
-                    <div class="docker-actions">
+        containers.forEach(c => {
+            const ports = parsePortMappings(c.ports);
+            if (ports.length > 0) {
+                apps.push({ ...c, parsedPorts: ports });
+            } else {
+                services.push(c);
+            }
+        });
+
+        // Render Apps as cards
+        const appsContainer = document.getElementById('dockerApps');
+        if (apps.length === 0) {
+            appsContainer.innerHTML = '<p class="empty-message">Aucune application avec port accessible</p>';
+        } else {
+            appsContainer.innerHTML = apps.map(c => {
+                const appName = getAppName(c.name);
+                const icon = getAppIcon(c.name);
+                const mainPort = c.parsedPorts[0].hostPort;
+                const url = `http://${hostIP}:${mainPort}`;
+
+                return `
+                <div class="app-card ${c.state === 'running' ? 'app-running' : 'app-stopped'}">
+                    <div class="app-card-header">
+                        <span class="app-icon">${icon}</span>
+                        <div class="app-info">
+                            <h4>${appName}</h4>
+                            <span class="app-image">${c.image}</span>
+                        </div>
+                        <span class="status-badge ${c.state === 'running' ? 'status-running' : 'status-stopped'}">
+                            ${c.state}
+                        </span>
+                    </div>
+                    <div class="app-card-body">
+                        <div class="app-ports">
+                            ${c.parsedPorts.map(p => `
+                                <a href="http://${hostIP}:${p.hostPort}" target="_blank" class="port-badge">
+                                    :${p.hostPort} 🔗
+                                </a>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="app-card-footer">
                         ${c.state === 'running'
+                        ? `<a href="${url}" target="_blank" class="btn btn-primary btn-sm">Ouvrir 🔗</a>
+                               <button class="btn btn-warning btn-sm" onclick="dockerAction('${c.id}', 'stop')">⏹️</button>
+                               <button class="btn btn-secondary btn-sm" onclick="dockerAction('${c.id}', 'restart')">🔄</button>`
+                        : `<button class="btn btn-success btn-sm" onclick="dockerAction('${c.id}', 'start')">▶️ Démarrer</button>`
+                    }
+                        <button class="btn btn-danger btn-sm" onclick="deleteContainer('${c.id}', '${c.name}', ${c.state === 'running'})">🗑️</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // Render Services as table
+        const tbody = document.getElementById('dockerBody');
+        if (services.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Aucun service</td></tr>';
+        } else {
+            tbody.innerHTML = services.map(c => `
+                <tr>
+                    <td><strong>${c.name}</strong></td>
+                    <td><code>${c.image}</code></td>
+                    <td>
+                        <span class="status-badge ${c.state === 'running' ? 'status-running' : 'status-stopped'}">
+                            ${c.state}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="docker-actions">
+                            ${c.state === 'running'
                     ? `<button class="btn btn-warning btn-sm" onclick="dockerAction('${c.id}', 'stop')" title="Arrêter">⏹️</button>
-                               <button class="btn btn-secondary btn-sm" onclick="dockerAction('${c.id}', 'restart')" title="Redémarrer">🔄</button>`
+                                   <button class="btn btn-secondary btn-sm" onclick="dockerAction('${c.id}', 'restart')" title="Redémarrer">🔄</button>`
                     : `<button class="btn btn-success btn-sm" onclick="dockerAction('${c.id}', 'start')" title="Démarrer">▶️</button>`
                 }
-                        <button class="btn btn-danger btn-sm" onclick="deleteContainer('${c.id}', '${c.name}', ${c.state === 'running'})" title="Supprimer">🗑️</button>
-                    </div>
-                </td>
-            </tr>
-        `}).join('');
+                            <button class="btn btn-danger btn-sm" onclick="deleteContainer('${c.id}', '${c.name}', ${c.state === 'running'})" title="Supprimer">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
     } catch (error) {
         console.error('Error loading containers:', error);
     }
