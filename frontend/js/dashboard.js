@@ -343,31 +343,61 @@ async function killProcess(pid, name) {
 // ========================================
 // Docker
 // ========================================
+function getHostIP() {
+    // Get base URL host (without port)
+    return window.location.hostname;
+}
+
+function parsePortMappings(portsString) {
+    if (!portsString) return [];
+    const ports = [];
+    const matches = portsString.matchAll(/(\d+\.\d+\.\d+\.\d+:)?(\d+)->(\d+)\/(tcp|udp)/g);
+    for (const match of matches) {
+        ports.push({
+            hostPort: match[2],
+            containerPort: match[3],
+            protocol: match[4]
+        });
+    }
+    return ports;
+}
+
 async function loadDockerContainers() {
     try {
         const response = await fetch(`${CONFIG.apiUrl}/docker/containers`);
         const containers = await response.json();
+        const hostIP = getHostIP();
 
         const tbody = document.getElementById('dockerBody');
-        tbody.innerHTML = containers.map(c => `
+        tbody.innerHTML = containers.map(c => {
+            const ports = parsePortMappings(c.ports);
+            const portLinks = ports.length > 0
+                ? ports.map(p => `<a href="http://${hostIP}:${p.hostPort}" target="_blank" class="port-link">:${p.hostPort} 🔗</a>`).join(' ')
+                : '<span style="color: var(--text-muted)">-</span>';
+
+            return `
             <tr>
                 <td><code>${c.id}</code></td>
-                <td>${c.name}</td>
+                <td><strong>${c.name}</strong></td>
                 <td>${c.image}</td>
                 <td>
                     <span class="status-badge ${c.state === 'running' ? 'status-running' : 'status-stopped'}">
                         ${c.state}
                     </span>
                 </td>
+                <td>${portLinks}</td>
                 <td>
-                    ${c.state === 'running'
-                ? `<button class="btn btn-warning btn-sm" onclick="dockerAction('${c.id}', 'stop')">⏹️</button>
-                           <button class="btn btn-secondary btn-sm" onclick="dockerAction('${c.id}', 'restart')">🔄</button>`
-                : `<button class="btn btn-success btn-sm" onclick="dockerAction('${c.id}', 'start')">▶️</button>`
-            }
+                    <div class="docker-actions">
+                        ${c.state === 'running'
+                    ? `<button class="btn btn-warning btn-sm" onclick="dockerAction('${c.id}', 'stop')" title="Arrêter">⏹️</button>
+                               <button class="btn btn-secondary btn-sm" onclick="dockerAction('${c.id}', 'restart')" title="Redémarrer">🔄</button>`
+                    : `<button class="btn btn-success btn-sm" onclick="dockerAction('${c.id}', 'start')" title="Démarrer">▶️</button>`
+                }
+                        <button class="btn btn-danger btn-sm" onclick="deleteContainer('${c.id}', '${c.name}', ${c.state === 'running'})" title="Supprimer">🗑️</button>
+                    </div>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
     } catch (error) {
         console.error('Error loading containers:', error);
     }
@@ -378,12 +408,32 @@ async function loadDockerImages() {
         const response = await fetch(`${CONFIG.apiUrl}/docker/images`);
         const data = await response.json();
 
-        document.getElementById('dockerImages').innerHTML = data.images.map(i => `
-            <div class="stat-item">
-                <span class="stat-label">${i.repository}:${i.tag}</span>
-                <span class="stat-value">${i.size}</span>
-            </div>
-        `).join('');
+        document.getElementById('dockerImages').innerHTML = `
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Image</th>
+                        <th>Tag</th>
+                        <th>Taille</th>
+                        <th>Créé</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.images.map(i => `
+                        <tr>
+                            <td><strong>${i.repository}</strong></td>
+                            <td><code>${i.tag}</code></td>
+                            <td>${i.size}</td>
+                            <td>${i.created}</td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="deleteImage('${i.id}', '${i.repository}:${i.tag}')" title="Supprimer">🗑️</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
     } catch (error) {
         console.error('Error loading images:', error);
     }
@@ -394,6 +444,44 @@ async function dockerAction(containerId, action) {
         const response = await fetch(`${CONFIG.apiUrl}/docker/container/${containerId}/${action}`, { method: 'POST' });
         if (response.ok) {
             loadDockerContainers();
+        } else {
+            const error = await response.json();
+            alert(`Erreur: ${error.detail}`);
+        }
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+}
+
+async function deleteContainer(containerId, name, isRunning) {
+    const forceMsg = isRunning ? '\n⚠️ Ce conteneur est en cours d\'exécution. Il sera arrêté de force.' : '';
+    if (!confirm(`Supprimer le conteneur "${name}" ?${forceMsg}`)) return;
+
+    try {
+        const url = isRunning
+            ? `${CONFIG.apiUrl}/docker/container/${containerId}?force=true`
+            : `${CONFIG.apiUrl}/docker/container/${containerId}`;
+        const response = await fetch(url, { method: 'DELETE' });
+
+        if (response.ok) {
+            loadDockerContainers();
+        } else {
+            const error = await response.json();
+            alert(`Erreur: ${error.detail}`);
+        }
+    } catch (error) {
+        alert(`Erreur: ${error.message}`);
+    }
+}
+
+async function deleteImage(imageId, name) {
+    if (!confirm(`Supprimer l'image "${name}" ?`)) return;
+
+    try {
+        const response = await fetch(`${CONFIG.apiUrl}/docker/image/${imageId}`, { method: 'DELETE' });
+
+        if (response.ok) {
+            loadDockerImages();
         } else {
             const error = await response.json();
             alert(`Erreur: ${error.detail}`);

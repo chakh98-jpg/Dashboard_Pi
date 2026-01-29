@@ -120,3 +120,59 @@ async def list_images():
         return {"images": images}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/container/{container_id}")
+async def delete_container(container_id: str, force: bool = False):
+    """Delete a Docker container"""
+    try:
+        cmd = ["docker", "rm"]
+        if force:
+            cmd.append("-f")
+        cmd.append(container_id)
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=400, detail=result.stderr.strip())
+        
+        return {"status": "success", "message": f"Container {container_id} deleted"}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Command timeout")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/image/{image_id}")
+async def delete_image(image_id: str, force: bool = False):
+    """Delete a Docker image"""
+    try:
+        cmd = ["docker", "rmi"]
+        if force:
+            cmd.append("-f")
+        cmd.append(image_id)
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=400, detail=result.stderr.strip())
+        
+        return {"status": "success", "message": f"Image {image_id} deleted"}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Command timeout")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
